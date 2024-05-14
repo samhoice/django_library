@@ -200,7 +200,7 @@ def main():
 
     print('\n')
 
-    ### Example with annotate and aggregate
+    ### Example with annotate and aggregate ###
     queryset = Book.objects.annotate(reader_count=Count("reader"))
     stats = queryset.aggregate(max_readers=Max("reader_count"))
     for book in queryset.filter(reader_count__exact=stats['max_readers']):
