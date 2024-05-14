@@ -21,6 +21,8 @@ os.environ["DJANGO_SETTINGS_MODULE"] = "django_library.settings"
 # Next call django.setup()
 django.setup()
 
+from django.db.models import Count, Max
+
 from random import choice, sample
 from datetime import date
 
@@ -98,19 +100,19 @@ def main():
     # For at least 3 authors, connect them to multiple books
     # I already did this, but:
     
-    author = Author(name=make_names())
-    author.save()
-    # could also create the books one at a time
-    # Book.object.create() or Book(...).save()
-    book = Book.objects.bulk_create([
-        Book(title="Boring Book", pub_date=date(year=2001, month=1, day=1), author=author),
-        Book(title="Boringer Book", pub_date=date(year=2005, month=7, day=15), author=author),
-        Book(title="Boringest Book", pub_date=date(year=2009, month=9, day=12), author=author),
-    ])
-    print("**** Author with multiple books ****")
-    print("Author: ", author)
-    for b in author.book_set.all():
-        print(f"  {b}")
+    # author = Author(name=make_names())
+    # author.save()
+    # # could also create the books one at a time
+    # # Book.object.create() or Book(...).save()
+    # book = Book.objects.bulk_create([
+    #     Book(title="Boring Book", pub_date=date(year=2001, month=1, day=1), author=author),
+    #     Book(title="Boringer Book", pub_date=date(year=2005, month=7, day=15), author=author),
+    #     Book(title="Boringest Book", pub_date=date(year=2009, month=9, day=12), author=author),
+    # ])
+    # print("**** Author with multiple books ****")
+    # print("Author: ", author)
+    # for b in author.book_set.all():
+    #     print(f"  {b}")
 
     # List all authors with a name containing an “S”
     authors = Author.objects.filter(name__contains="S")
@@ -152,8 +154,6 @@ def main():
     print(f"The least books pub'd by an author is: {least} and these authors did it:")
     for i in authors_with_least:
         print(i)
-
-
     
     # List all books a reader has read
     reader = Reader.objects.first()
@@ -174,9 +174,37 @@ def main():
     print("\n")
 
     # List the author whose books have been read the most
+    
     # List the top three most popular books
-    # for book in Book.objects.filter(reader_set__count__gt=1):
-    #     print(book)
+    # This would be great for annotate
+    book_map = {}
+    for b in Book.objects.all():
+        reader_count = b.reader_set.count()
+        print("reader count:", reader_count)
+        if reader_count not in book_map:
+            book_map[reader_count] = [b]
+        else:
+            book_map[reader_count].append(b)
+
+    reader_counts = sorted(book_map.keys())
+    print(reader_counts)
+    
+    most_popular_books = []
+    while len(most_popular_books) < 3 and len(reader_counts):
+        largest_reader_count = reader_counts.pop()
+        most_popular_books.extend(book_map[largest_reader_count])
+
+    print("Most Popular Books:")
+    for b in most_popular_books:
+        print(b, b.reader_set.count())
+
+    print('\n')
+
+    ### Example with annotate and aggregate
+    queryset = Book.objects.annotate(reader_count=Count("reader"))
+    stats = queryset.aggregate(max_readers=Max("reader_count"))
+    for book in queryset.filter(reader_count__exact=stats['max_readers']):
+        print(book, book.reader_count)
 
 
     # Find a reader’s favorite author (The one that occurs most frequently in the books they have read)  If a tie, list them all.
