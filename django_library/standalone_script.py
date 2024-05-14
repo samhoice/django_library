@@ -68,6 +68,12 @@ def clean_all_data():
     Reader.objects.all().delete()
     print("Done")
 
+def print_label_queryset(label, queryset):
+    print(f"**** {label} ****")
+    for i in queryset:
+        print(i)
+    print("\n")
+
 def main():
     print("Start")
     book_count = Book.objects.count()
@@ -77,58 +83,100 @@ def main():
         print("Not making new data")
 
 
-    # print("*** Books")
-    # # List all books
-    # for b in Book.objects.all():
-    #     print(b)
+    
+    queryset = Book.objects.all()
+    print_label_queryset("Books", queryset)
 
-    # print("*** Authors")
-    # # List all authors
-    # for a in Author.objects.all():
-    #     print(a)
 
-    # print("*** Readers")
-    # # list all readers
-    # for r in Reader.objects.all():
-    #     print(r)
+    
+    queryset = Author.objects.all()
+    print_label_queryset("Author", queryset)
+
+    queryset = Reader.objects.all()
+    print_label_queryset("Reader", queryset)
 
     # For at least 3 authors, connect them to multiple books
-    # authors = Author.objects.filter(book_set__count__gt=10)
-    # print(authors)
-
-    # a = Author.objects.all().last()
-    # print(a.book_set.all())
+    # I already did this, but:
+    
+    author = Author(name=make_names())
+    author.save()
+    # could also create the books one at a time
+    # Book.object.create() or Book(...).save()
+    book = Book.objects.bulk_create([
+        Book(title="Boring Book", pub_date=date(year=2001, month=1, day=1), author=author),
+        Book(title="Boringer Book", pub_date=date(year=2005, month=7, day=15), author=author),
+        Book(title="Boringest Book", pub_date=date(year=2009, month=9, day=12), author=author),
+    ])
+    print("**** Author with multiple books ****")
+    print("Author: ", author)
+    for b in author.book_set.all():
+        print(f"  {b}")
 
     # List all authors with a name containing an “S”
     authors = Author.objects.filter(name__contains="S")
-    print(authors)
+    print_label_queryset("Authors with 'S' in their name", authors)
 
     # List all books published before 1984
     books = Book.objects.filter(pub_date__year__lt=1984)
-    for b in books:
-        print(b.title, b.pub_date.year)
+    print_label_queryset("Books before 1984", books)
 
-    # Several of these will require annotation...
+    # Several of these can be done with annotations
     # List all authors who have written multiple books
     for a in Author.objects.all():
         if a.book_set.count() > 1:
-            print(a, a.book_set.count())
+            print(f"Author: {a} wrote {a.book_set.count()} books")
 
-
-    # List the author who has written the most books.  If a tie, list them all. 
+    # List the author who has written the most books.  If a tie, list them all.
     # List the author who has written the least books.  If a tie, list them all.
+    most = 0
+    least = 100
+    authors_with_most = []
+    authors_with_least = []
+    for a in Author.objects.all():
+        count = a.book_set.count()
+        if count > most:
+            most = count
+            authors_with_most = [a]
+        elif count == most:
+            authors_with_most.append(a)
+        if count < least:
+            least = count
+            authors_with_least = [a]
+        elif count == least:
+            authors_with_least.append(a)
+
+    print(f"The most books pub'd by an author is: {most} and these authors did it:")
+    for i in authors_with_most:
+        print(i)
+    
+    print(f"The least books pub'd by an author is: {least} and these authors did it:")
+    for i in authors_with_least:
+        print(i)
+
+
     
     # List all books a reader has read
-    # reader = Reader.objects.all().first()
-    # print("Reader: ", reader)
-    # for book in reader.books.all():
-    #     print(book)
+    reader = Reader.objects.first()
+    print_label_queryset(f"Reader: {reader}'s books", reader.books.all())
 
+    print("\n")
     # List the reader who has read the most books.  If a tie, list them all.
+    most_reader = None # This time I'm saving the reader
+    for r in Reader.objects.all():
+        if not most_reader:
+            most_reader = [r]
+        elif r.books.count() > most_reader[0].books.count():
+            most_reader = [r]
+        elif r.books.count() == most_reader[0].books.count():
+            most_reader.append(r)
+
+    print(f"Readers {most_reader} has read the most books at {most_reader[0].books.count()}")
+    print("\n")
+
     # List the author whose books have been read the most
     # List the top three most popular books
-    for book in Book.objects.filter(reader_set__count__gt=2):
-        print(book)
+    # for book in Book.objects.filter(reader_set__count__gt=1):
+    #     print(book)
 
 
     # Find a reader’s favorite author (The one that occurs most frequently in the books they have read)  If a tie, list them all.
